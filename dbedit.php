@@ -3,10 +3,23 @@
   $lang = GET('lang', 'en');
   $DBName = 'classicmodels';
 
-  if (GET('act') == 'grid') {
-    $json = json_decode(file_get_contents("php://input"));
-    echo json_encode(GetGridData($json->tableName, GET('page'), GET('limit'), GET('sidx'), GET('sord')));
+  switch (GET('act')) {
+    case 'grid': {
+      $json = json_decode(file_get_contents("php://input"));
+      echo json_encode(GetGridData($json->tableName, GET('page'), GET('limit'), GET('sidx'), GET('sord')));
+      break;
+    }
+    case 'saveRecord': {
+      $json = json_decode(file_get_contents("php://input"));
+      
+      break;
+    }
+    
+    default:
+      # code...
+      break;
   }
+
 
   function GET($key, $default = null) {
     return isset($_GET[$key]) ? $_GET[$key] : $default;
@@ -54,12 +67,14 @@
   function GetGridData($tableName, $page, $limit, $sidx, $sord) {
     $r = new stdClass();
     $r->Header = DbDoIt("select *, ifnull(".$GLOBALS['lang'].", Name) as DisplayName from SYS_ColumnsSettings "
-      ."where SYS_TablesSettings_ID = (select ID from SYS_TablesSettings where Name='$tableName')", PDO::FETCH_ASSOC);
+      ."where SYS_TablesSettings_ID = (select ID from SYS_TablesSettings where Name='$tableName') order by OrdinalPosition", PDO::FETCH_ASSOC);
 
-    //LookUps foreign keys
+    //LookUps foreign keys and colect column names for other select
     $headerSize = count($r->Header);
+    $colNames = [];
     for ($i = 0; $i < $headerSize; $i++) {
       $col = $r->Header[$i];
+      $colNames[] = $col["Name"];
       if ($col["ReplaceWith"] != null) {
         $lookUp = DbDoIt("select ".$col["ReferencedColumn"].", concat(".$col["ReplaceWith"].") from ".$col["ReferencedTable"], PDO::FETCH_NUM);
         $rep = [];
@@ -74,7 +89,7 @@
     $total_pages = $count > 0 ? ceil($count / $limit) : 0;
     if ($page > $total_pages) $page = $total_pages;
     $start = $limit * $page - $limit;
-    $r->Data = DbDoIt("select * from $tableName order by $sidx $sord limit $start , $limit");
+    $r->Data = DbDoIt("select ".implode(',', $colNames)." from $tableName order by $sidx $sord limit $start , $limit");
     return $r;
   }
 
@@ -102,7 +117,7 @@
       `Required` BIT(1) NOT NULL DEFAULT b'1',
       `Width` SMALLINT NULL DEFAULT NULL,
       `Align` VARCHAR(6) NOT NULL DEFAULT 'left',/*left, center, right*/
-      `EditAs` VARCHAR(11) NOT NULL DEFAULT 'text',/*number, varchar, textarea, date, time, datetime, timestamp, select, multiselect, checkbox*/
+      `EditAs` VARCHAR(11) NOT NULL DEFAULT 'text',/*number, varchar, textarea, date, time, datetime, timestamp, select, checkbox*/
       `ColumnDefault` VARCHAR(64) NULL DEFAULT NULL,
       `NumericScale` TINYINT NULL DEFAULT NULL,
       `ReplaceWith` VARCHAR(64) NULL DEFAULT NULL,/*Name, ' (', ID, ')' <= columns from foreign table*/
@@ -138,12 +153,8 @@
       ."select T.ID, C.column_name, C.ordinal_position, if (C.is_nullable = 'NO', true, false) as required, C.data_type, C.column_default, C.numeric_scale "
       ."from SYS_TablesSettings as T join information_schema.columns as C on C.table_schema = '$dbname' and T.Name = C.table_name "
       ."where (T.ID, C.column_name) not in (select SYS_TablesSettings_ID, Name from SYS_ColumnsSettings)");
-    //change data types to edit types
-    DbDoIt("update SYS_ColumnsSettings set EditAs = 'number' where EditAs in ('int', 'tinyint', 'smallint', 'mediumint', 'bigint', 'float', 'double', 'decimal')");
-    DbDoIt("update SYS_ColumnsSettings set EditAs = 'checkbox' where EditAs in ('bit')");
-    DbDoIt("update SYS_ColumnsSettings set EditAs = 'varchar' where EditAs in ('char')");
-    DbDoIt("update SYS_ColumnsSettings set EditAs = 'textarea' where EditAs in ('tinytext', 'text', 'mediumtext', 'longtext')");
     //update ReplaceWith by primary key + first other column from foreign table
+    //set ReferencedTable and ReferencedColumn
     DbDoIt("update SYS_ColumnsSettings as CS left join "
         ."(select T.ID, K.column_name, K.referenced_table_name, K.referenced_column_name, concat('''('',', k.referenced_column_name, ','') '',', "
           ."(select C.column_name from information_schema.columns as C "
@@ -152,5 +163,11 @@
         ."where K.table_schema='$dbname' and K.referenced_table_schema='$dbname') as R "
       ."on CS.SYS_TablesSettings_ID = R.ID and CS.Name = R.column_name "
       ."set CS.ReplaceWith = R.replace_with, CS.ReferencedTable = R.referenced_table_name, CS.ReferencedColumn = R.referenced_column_name");
+    //change data types to edit types
+    DbDoIt("update SYS_ColumnsSettings set EditAs = 'number' where EditAs in ('int', 'tinyint', 'smallint', 'mediumint', 'bigint', 'float', 'double', 'decimal')");
+    DbDoIt("update SYS_ColumnsSettings set EditAs = 'checkbox' where EditAs in ('bit')");
+    DbDoIt("update SYS_ColumnsSettings set EditAs = 'varchar' where EditAs in ('char')");
+    DbDoIt("update SYS_ColumnsSettings set EditAs = 'textarea' where EditAs in ('tinytext', 'text', 'mediumtext', 'longtext')");
+    DbDoIt("update SYS_ColumnsSettings set EditAs = 'select' where ReplaceWith is not null");
   }
 ?>

@@ -1,7 +1,17 @@
 body {
   background-color: rgb(0,0,0) !important;
-  color: white !important;
+  color: #000000 !important;
   font-family: Arial, Helvetica, sans-serif;
+}
+
+a {
+	background: #30A6E6;
+	color: #FFFFFF;
+	text-decoration: none;
+	padding: 8px 25px;
+}
+a:hover {
+	background: #000000;
 }
 
 .grid {
@@ -56,7 +66,6 @@ body {
   filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#E3EFFF", endColorstr="#BFDBFF");
   background-color: #E3EFFF;
   border: 1px solid black;
-  width: 300px;
   padding: 5px;
   z-index: 1;
   position: fixed;
@@ -69,4 +78,9 @@ body {
 #edit table {
   width: 100%;
   font-weight: bold;
+}
+
+#edit .flexF {
+  display: flex;
+  justify-content: space-around;
 }
