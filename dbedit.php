@@ -11,7 +11,7 @@
     }
     case 'saveRecord': {
       $json = json_decode(file_get_contents("php://input"));
-      
+      echo InsertUpdateRecord($json, GET('tableName'));
       break;
     }
     
@@ -41,6 +41,32 @@
     catch(PDOException $e) {
         echo "Error: " . $e->getMessage();
     }
+  }
+
+  function InsertUpdateRecord($data, $tableName) {
+    if ($data[0][1] == -1) { //primary key = -1 => insert
+
+    } else { //update
+      $dbVerOfRecord = DbDoIt("select * from $tableName where ".$data[0][0]."=".$data[0][1]);
+      for ($i = 1; $i < count($data); $i++) { //starts from 1, 0 is primary key
+        $newValue = $data[$i][1];
+        $oldValue = $dbVerOfRecord[0][$i];
+        if (($newValue === true && $oldValue == false) || ($newValue === false && $oldValue == true) || ($newValue != $oldValue)) {
+          if (is_bool($newValue)) {
+            $newValue = $newValue ? 'b\'1\'' : 'b\'0\'';
+          } else if (is_string($newValue)) {
+            $newValue = '\''.str_replace('\'', '\'\'', $newValue).'\'';
+          }
+          //pridat jeste null
+          $toUpdate[] = substr($data[$i][0], 2)."=".$newValue;
+        }
+      }
+      DbDoIt("update $tableName set ".$toUpdate.explode(',')." where ".substr($data[0][0], 2)."=".$data[0][1]);
+    }
+  }
+
+  function DeleteRecord($data, $tableName) {
+
   }
 
   function CreateMainMenu() {

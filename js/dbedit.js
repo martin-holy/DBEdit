@@ -151,7 +151,7 @@ DBEdit.HideEdit = function () {
 DBEdit.SaveRecord = function (idx) {
   var form = document.forms.namedItem('editForm');
   var oField, oFieldValue = "";
-  var data = {};
+  var data = [];
   for (var i = 0; i < form.elements.length; i++) {
     oField = form.elements[i];
     switch (oField.type) {
@@ -167,7 +167,7 @@ DBEdit.SaveRecord = function (idx) {
     }
     if (!oField.required && oFieldValue == '') 
       oFieldValue = null;
-    data[i] = {[oField.id]: oFieldValue};
+    data[i] = [oField.id, oFieldValue];
   }
 
   var http = new XMLHttpRequest();
