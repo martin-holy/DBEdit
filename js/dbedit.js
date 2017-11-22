@@ -79,6 +79,7 @@ DBEdit.EditRecord = function (idx) {
   buttons.innerHTML = edit;
 
   var ed = document.getElementById('edit');
+  ed.innerHTML = '';
   ed.appendChild(editForm);
   ed.appendChild(buttons);
   ed.style.display = 'block';
@@ -164,8 +165,9 @@ DBEdit.SaveRecord = function (idx) {
         oFieldValue = oField.value;
         break;
     }
-    if (!oField.required && oFieldValue == '') oFieldValue = null;
-    data[i] = [oField.id, oFieldValue];
+    if (!oField.required && oFieldValue == '') 
+      oFieldValue = null;
+    data[i] = {[oField.id]: oFieldValue};
   }
 
   var http = new XMLHttpRequest();
