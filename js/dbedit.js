@@ -13,7 +13,7 @@ var DBEdit = DBEdit || {};
 DBEdit.GridData = null;
 
 DBEdit.CreateGrid = function (tableName, page = 1, limit = 200, sidx = 1, sord = '') {
-  DBEdit.GridTable = tableName;
+  DBEdit.GridTableName = tableName;
   var http = new XMLHttpRequest();
   http.open('POST', 'dbedit.php?act=grid&tableName={0}&page={1}&limit={2}&sidx={3}&sord={4}'.format(tableName, page, limit, sidx, sord), true);
   http.setRequestHeader('Content-type', 'application/json;charset=UTF-8');
@@ -32,7 +32,7 @@ DBEdit.CreateGrid = function (tableName, page = 1, limit = 200, sidx = 1, sord =
     //data
     var rows = DBEdit.GridData.Data;
     for (var i = 0; i < rows.length; i++) {
-      grid += '<tr onclick="DBEdit.EditRecord({0});">'.format(i);
+      grid += '<tr onClick="DBEdit.EditRecord({0});">'.format(i);
       for (var j = 0; j < rows[i].length; j++) {
         var val = rows[i][j];
         if (val == null) {
@@ -61,8 +61,13 @@ DBEdit.EditRecord = function (idx) {
   var header = DBEdit.GridData.Header;
   var editForm = document.createElement('form');
   var editTable = document.createElement('table');
+  var editDiv = document.getElementById('edit');
+
+  editDiv.innerHTML = '';
+  editDiv.appendChild(editForm);
   editForm.name = 'editForm';
   editForm.appendChild(editTable);
+
   for (var i = 0; i < header.length; i++) {
     var val = isNew ? header[i].Default : DBEdit.GridData.Data[idx][i];
     var row = editTable.insertRow();
@@ -70,19 +75,16 @@ DBEdit.EditRecord = function (idx) {
     row.insertCell().appendChild(DBEdit.GetInput(i, val));
   }
 
-  var edit = '<a href="#" onclick="DBEdit.SaveRecord({0}); return false;">Save</a>'.format(idx);
-  edit += '<a href="#" onclick="DBEdit.CancelEdit(); return false;">Cancel</a>';
-  edit += '<a href="#" onclick="DBEdit.DeleteRecord({0}); return false;" {1}>Delete</a>'.format(idx, idx == -1 ? 'disable' : '');
+  var edit = '<a href="#" onClick="DBEdit.SaveRecord({0}); return false;">Save</a>'.format(idx);
+  edit += '<a href="#" onClick="DBEdit.CancelEdit(); return false;">Cancel</a>';
+  edit += '<a href="#" onClick="DBEdit.DeleteRecord({0}); return false;" {1}>Delete</a>'.format(idx, idx == -1 ? 'disable' : '');
 
   var buttons = document.createElement('div');
+  editDiv.appendChild(buttons);
   buttons.setAttribute('class', 'flexF');
   buttons.innerHTML = edit;
-
-  var ed = document.getElementById('edit');
-  ed.innerHTML = '';
-  ed.appendChild(editForm);
-  ed.appendChild(buttons);
-  ed.style.display = 'block';
+  
+  editDiv.style.display = 'block';
 };
 
 //Generate corect input for editing
@@ -103,7 +105,8 @@ DBEdit.GetInput = function (colIdx, val) {
       elem = document.createElement('select');
       var lookUp = DBEdit.GridData.LookUps[colIdx];
       for (var id in lookUp) {
-        elem.appendChild(new Option(lookUp[id], id, id == val));
+        elem.appendChild(new Option(lookUp[id], id));
+        if (id == val) elem.selectedIndex = elem.childElementCount -1;
       }
       break;
     }
@@ -161,6 +164,9 @@ DBEdit.SaveRecord = function (idx) {
       case 'number':
         oFieldValue = oField.valueAsNumber;
         break;
+      case 'select-one':
+        oFieldValue = parseInt(oField.value);
+        break;
       default:
         oFieldValue = oField.value;
         break;
@@ -171,11 +177,14 @@ DBEdit.SaveRecord = function (idx) {
   }
 
   var http = new XMLHttpRequest();
-  http.open('POST', 'dbedit.php?act=saveRecord&tableName={0}'.format(DBEdit.GridTable), true);
+  http.open('POST', 'dbedit.php?act=saveRecord&tableName={0}'.format(DBEdit.GridTableName), true);
   http.setRequestHeader('Content-type', 'application/json;charset=UTF-8');
   http.send(JSON.stringify(data));
   http.onload = function() {
     var response = JSON.parse(http.responseText);
+    //TODO react on response
+    DBEdit.HideEdit();
+    DBEdit.CreateGrid(DBEdit.GridTableName);
   }
 
 }

@@ -13,12 +13,11 @@
 
 <?php
   CreateDBStructure();
-  UpdateDBSettings();
 ?>
 
 <?php 
   //run just if db sturcure change
-  //UpdateLanguageTables();
+  //UpdateDBSettings();
 ?>
 
 <?php 

@@ -11,7 +11,7 @@
     }
     case 'saveRecord': {
       $json = json_decode(file_get_contents("php://input"));
-      echo InsertUpdateRecord($json, GET('tableName'));
+      echo json_encode(InsertUpdateRecord($json, GET('tableName')));
       break;
     }
     
@@ -44,25 +44,48 @@
   }
 
   function InsertUpdateRecord($data, $tableName) {
-    if ($data[0][1] == -1) { //primary key = -1 => insert
+    $isNew = $data[0][1] == -1; //primary key = -1 => insert
+    $toInsertCols = [];
+    $toInsertVals = [];
+    $toUpdate = [];
+    $dbVerOfRecord = $isNew ? null : DbDoIt("select * from $tableName where ".substr($data[0][0], 2)."=".$data[0][1]);
 
-    } else { //update
-      $dbVerOfRecord = DbDoIt("select * from $tableName where ".$data[0][0]."=".$data[0][1]);
-      for ($i = 1; $i < count($data); $i++) { //starts from 1, 0 is primary key
-        $newValue = $data[$i][1];
+    for ($i = 1; $i < count($data); $i++) { //starts from 1, 0 is primary key
+      $newValue = $data[$i][1];
+
+      if (!$isNew) {
         $oldValue = $dbVerOfRecord[0][$i];
-        if (($newValue === true && $oldValue == false) || ($newValue === false && $oldValue == true) || ($newValue != $oldValue)) {
-          if (is_bool($newValue)) {
-            $newValue = $newValue ? 'b\'1\'' : 'b\'0\'';
-          } else if (is_string($newValue)) {
-            $newValue = '\''.str_replace('\'', '\'\'', $newValue).'\'';
-          }
-          //pridat jeste null
-          $toUpdate[] = substr($data[$i][0], 2)."=".$newValue;
+        if (($newValue === true && $oldValue == true) || ($newValue === false && $oldValue == false) || ($newValue == $oldValue)) {
+          continue;
         }
       }
-      DbDoIt("update $tableName set ".$toUpdate.explode(',')." where ".substr($data[0][0], 2)."=".$data[0][1]);
+
+      if (is_bool($newValue)) {
+        $newValue = $newValue ? 'b\'1\'' : 'b\'0\'';
+      } else if (is_string($newValue)) {
+        $newValue = '\''.str_replace('\'', '\'\'', $newValue).'\'';
+      } else if (is_null($newValue)) {
+        $newValue = 'null';
+      }
+      
+      if ($isNew) {
+        $toInsertCols[] = substr($data[$i][0], 2);
+        $toInsertVals[] = $newValue;
+      } else {
+        $toUpdate[] = substr($data[$i][0], 2)."=".$newValue;
+      } 
     }
+
+    if ($isNew) {
+      DbDoIt("insert into $tableName (".implode(',', $toInsertCols).") values (".implode(',', $toInsertVals).")");
+    } else {
+      if (count($toUpdate) > 0)
+        DbDoIt("update $tableName set ".implode(',', $toUpdate)." where ".substr($data[0][0], 2)."=".$data[0][1]);
+    }
+
+    $r = new stdClass();
+    $r->Status = 'done';
+    return $r;//TODO write corect return
   }
 
   function DeleteRecord($data, $tableName) {
@@ -172,7 +195,7 @@
       ."select table_name from information_schema.views where table_schema = '$dbname') as tmp "
       ."where table_name not in (select Name from SYS_TablesSettings)");
     //delete deleted columns
-    DbDoIt("delete from SYS_ColumnsSettings as C join SYS_TablesSettings as T on C.SYS_TablesSettings_ID = T.ID "
+    DbDoIt("delete C from SYS_ColumnsSettings as C join SYS_TablesSettings as T on C.SYS_TablesSettings_ID = T.ID "
       ."where (T.Name, C.Name) not in (select table_name, column_name from information_schema.columns where table_schema = '$dbname')");
     //insert new columns
     DbDoIt("insert into SYS_ColumnsSettings (SYS_TablesSettings_ID, Name, OrdinalPosition, Required, EditAs, ColumnDefault, NumericScale) "
