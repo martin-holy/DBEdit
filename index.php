@@ -8,35 +8,28 @@
     <link href="css/menu.css" rel="stylesheet">
     <script src="js/dbedit.js"></script>
   </head>
-<body>
-<?php include "dbedit.php" ?>
+  <body>
+    <?php 
+      include "dbedit.php";
+      CreateDBStructure();
 
-<?php
-  CreateDBStructure();
-?>
+      //run just if db sturcure change
+      //UpdateDBSettings();
+    ?>
 
-<?php 
-  //run just if db sturcure change
-  //UpdateDBSettings();
-?>
-
-<?php 
-  echo CreateMainMenu();
-  echo "<br /><br /><br />";
-
-  //echo CreateJQGrid(GET('tableName', 'LNG_Columns'));
-
-  //echo CreateGrid($_GET["tableName"] ?: "LNG_Columns");
-
-  //GetTableData($_GET["tableName"] ?: "LNG_Columns");
-?>
-
-    <div id="grid"></div>
-    <div id="pager"></div>
-    <div id="edit" style="display: none;"></div>
+    <header>
+      <?php echo CreateMainMenu(); ?>
+    </header>
+    <main class="main">
+      <div id="grid"></div>
+      <div id="edit" style="display: none;"></div>
+    </main>
+    <footer>
+      <a href="#" onClick="DBEdit.NewRecord(); return false;">+</a>
+    </footer>
 
     <script>
-      DBEdit.CreateGrid('<?php echo GET('tableName', 'LNG_Columns'); ?>');
+      DBEdit.CreateGrid('<?php echo GET('tableName', 'SYS_ColumnsSettings'); ?>');
     </script>
 
     <?php $conn = null; ?>

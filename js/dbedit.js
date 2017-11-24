@@ -12,6 +12,7 @@ if (!String.prototype.format) {
 var DBEdit = DBEdit || {};
 DBEdit.GridData = null;
 
+//Generate Grid
 DBEdit.CreateGrid = function (tableName, page = 1, limit = 200, sidx = 1, sord = '') {
   DBEdit.GridTableName = tableName;
   var http = new XMLHttpRequest();
@@ -52,12 +53,12 @@ DBEdit.CreateGrid = function (tableName, page = 1, limit = 200, sidx = 1, sord =
     }
 
     document.getElementById('grid').innerHTML = grid;
+    DBEdit.CreateEdit();
   }
 }
 
-//Generate Edit form and shows it
-DBEdit.EditRecord = function (idx) {
-  var isNew = idx == -1 ? true : false;
+//Generate Edit form
+DBEdit.CreateEdit = function () {
   var header = DBEdit.GridData.Header;
   var editForm = document.createElement('form');
   var editTable = document.createElement('table');
@@ -69,26 +70,21 @@ DBEdit.EditRecord = function (idx) {
   editForm.appendChild(editTable);
 
   for (var i = 0; i < header.length; i++) {
-    var val = isNew ? header[i].Default : DBEdit.GridData.Data[idx][i];
     var row = editTable.insertRow();
     row.insertCell().textContent = header[i].DisplayName;
-    row.insertCell().appendChild(DBEdit.GetInput(i, val));
+    row.insertCell().appendChild(DBEdit.GetInput(i));
   }
-
-  var edit = '<a href="#" onClick="DBEdit.SaveRecord({0}); return false;">Save</a>'.format(idx);
-  edit += '<a href="#" onClick="DBEdit.CancelEdit(); return false;">Cancel</a>';
-  edit += '<a href="#" onClick="DBEdit.DeleteRecord({0}); return false;" {1}>Delete</a>'.format(idx, idx == -1 ? 'disable' : '');
 
   var buttons = document.createElement('div');
   editDiv.appendChild(buttons);
   buttons.setAttribute('class', 'flexF');
-  buttons.innerHTML = edit;
-  
-  editDiv.style.display = 'block';
-};
+  buttons.innerHTML = '<a href="#" onClick="DBEdit.SaveRecord(); return false;">Save</a>'
+                    + '<a href="#" onClick="DBEdit.CancelEdit(); return false;">Cancel</a>'
+                    + '<a href="#" onClick="DBEdit.DeleteRecord(); return false;">Delete</a>';
+}
 
 //Generate corect input for editing
-DBEdit.GetInput = function (colIdx, val) {
+DBEdit.GetInput = function (colIdx) {
   var col = DBEdit.GridData.Header[colIdx];
 
   if (col.EditAs == 'datetime') col.EditAs = 'datetime-local';
@@ -98,7 +94,6 @@ DBEdit.GetInput = function (colIdx, val) {
   switch (col.EditAs) {
     case 'textarea': {
       elem = document.createElement('textarea');
-      elem.value = val;
       break;
     }
     case 'select': {
@@ -106,14 +101,7 @@ DBEdit.GetInput = function (colIdx, val) {
       var lookUp = DBEdit.GridData.LookUps[colIdx];
       for (var id in lookUp) {
         elem.appendChild(new Option(lookUp[id], id));
-        if (id == val) elem.selectedIndex = elem.childElementCount -1;
       }
-      break;
-    }
-    case 'checkbox': {
-      elem = document.createElement('input');
-      elem.setAttribute('type', col.EditAs);
-      elem.checked = val == 1;
       break;
     }
     case 'number': {
@@ -122,13 +110,11 @@ DBEdit.GetInput = function (colIdx, val) {
       elem.setAttribute('type', col.EditAs);
       elem.placeholder = numericScale == 0 ? '0' : '0.'+'0'.repeat(numericScale);
       elem.step = elem.placeholder.substring(0, elem.placeholder.length - 1) + '1';
-      elem.value = val;
       break;
     }
     default: {
       elem = document.createElement('input');
       elem.setAttribute('type', col.EditAs);
-      elem.value = val;
       break;
     }
   }
@@ -138,6 +124,48 @@ DBEdit.GetInput = function (colIdx, val) {
   elem.id = '__' + col.Name;
 
   return elem;
+};
+
+//Sets values to inputs and display edit form
+DBEdit.EditRecord = function (idx) {
+  DBEdit.EditedIdx = idx;
+  var isNew = idx == -1 ? true : false;
+  var header = DBEdit.GridData.Header;
+  var form = document.forms.namedItem('editForm');
+
+  for (var i = 0; i < form.elements.length; i++) {
+    var val = isNew ? header[i].Default : DBEdit.GridData.Data[idx][i];
+    var oField = form.elements[i];
+
+    if (i == 0) { //0 is always auto incremen primary key
+      oField.value = isNew ? -1 : val;
+      oField.readOnly = true;
+      continue;
+    }
+
+    switch (oField.type) {
+      case 'checkbox':
+        oField.checked = val == 1;
+        break;
+      case 'select-one':
+        if (isNew && val == undefined) {
+          oField.selectedIndex = 0;
+          break;
+        }
+        for (var j = 0; j < oField.options.length; j++) {
+          if (oField.options[j].value == val) {
+            oField.selectedIndex = j;
+            break;
+          }
+        }
+        break;
+      default:
+        oField.value = val;
+        break;
+    }
+  }
+
+  document.getElementById('edit').style.display = 'block';
 };
 
 //Cancel Edit
@@ -150,9 +178,15 @@ DBEdit.HideEdit = function () {
   document.getElementById('edit').style.display = 'none';
 };
 
+//Open Edit form
+DBEdit.NewRecord = function () {
+  DBEdit.EditRecord(-1);
+};
+
 //Save Record
-DBEdit.SaveRecord = function (idx) {
+DBEdit.SaveRecord = function () {
   var form = document.forms.namedItem('editForm');
+  if (!form.checkValidity()) return;
   var oField, oFieldValue = "";
   var data = [];
   for (var i = 0; i < form.elements.length; i++) {
@@ -186,5 +220,4 @@ DBEdit.SaveRecord = function (idx) {
     DBEdit.HideEdit();
     DBEdit.CreateGrid(DBEdit.GridTableName);
   }
-
 }

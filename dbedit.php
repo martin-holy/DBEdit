@@ -175,12 +175,44 @@
       `ReferencedColumn` VARCHAR(64) NULL DEFAULT NULL,
       PRIMARY KEY (`ID`),
       INDEX `SYS_TablesSettings_ID` (`SYS_TablesSettings_ID`),
-      CONSTRAINT `SYS_TablesSettings_ibfk_1` FOREIGN KEY (`SYS_TablesSettings_ID`) REFERENCES `SYS_TablesSettings` (`ID`))
+      CONSTRAINT `SYS_ColumnsSettings_ibfk_1` FOREIGN KEY (`SYS_TablesSettings_ID`) REFERENCES `SYS_TablesSettings` (`ID`))
+      COLLATE='utf8_general_ci'
+      ENGINE=InnoDB
+      AUTO_INCREMENT=1;");
+    
+    //if ($inDb < 2) UpdateDBSettings();
+
+    // for testing
+    DbDoIt("CREATE TABLE IF NOT EXISTS `TMP_Temp` (
+      `ID` INT(11) NOT NULL AUTO_INCREMENT,
+      `Col_Varchar` VARCHAR(64) NOT NULL,
+      `Col_Varchar_Null` VARCHAR(64) NULL,
+      `Col_LinkToTable` INT(11) NOT NULL,
+      `Col_LinkToColumn_Null` INT(11) NULL,
+      `Col_Integer` INT(11) NOT NULL,
+      `Col_Integer_Null` INT(11) NULL,
+      `Col_Decimal` DECIMAL(10,2) NOT NULL,
+      `Col_Decimal_Null` DECIMAL(10,2) NULL,
+      `Col_Bit` BIT(1) NOT NULL DEFAULT b'0',
+      `Col_Date` DATE NOT NULL,
+      `Col_Date_Null` DATE NULL,
+      `Col_Time` TIME NOT NULL,
+      `Col_Time_Null` TIME NULL,
+      `Col_DateTime` DATETIME NOT NULL,
+      `Col_DateTime_Null` DATETIME NULL,
+      `Col_Text` TEXT NOT NULL,
+      `Col_Text_Null` TEXT NULL,
+      PRIMARY KEY (`ID`),
+      INDEX `Col_LinkToTable` (`Col_LinkToTable`),
+      INDEX `Col_LinkToColumn_Null` (`Col_LinkToColumn_Null`),
+      CONSTRAINT `TMP_Temp_ibfk_1` FOREIGN KEY (`Col_LinkToTable`) REFERENCES `SYS_TablesSettings` (`ID`),
+      CONSTRAINT `TMP_Temp_ibfk_2` FOREIGN KEY (`Col_LinkToColumn_Null`) REFERENCES `SYS_ColumnsSettings` (`ID`))
       COLLATE='utf8_general_ci'
       ENGINE=InnoDB
       AUTO_INCREMENT=1;");
 
-    if ($inDb < 2) UpdateDBSettings();
+    $inDb += DbDoIt("select count(*) from information_schema.tables where table_name='TMP_Test'")[0][0];
+    if ($inDb < 3) UpdateDBSettings();
   }
 
   function UpdateDBSettings() {
