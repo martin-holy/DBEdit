@@ -9,11 +9,24 @@ if (!String.prototype.format) {
   };
 }
 
+function GetUrlParameter(name, result = null) {
+  var url = new URL(window.location.href);
+  return url.searchParams.has(name) ? url.searchParams.get(name) : result;
+}
+
 var DBEdit = DBEdit || {};
 DBEdit.GridData = null;
 
 //Generate Grid
-DBEdit.CreateGrid = function (tableName, page = 1, limit = 200, sidx = 1, sord = '') {
+DBEdit.CreateGrid = function () {
+  var tableName = GetUrlParameter('tableName');
+  if (tableName == null) return;
+  var page = GetUrlParameter('page', 1);
+  var limit = GetUrlParameter('limit', 10);
+  var sidx = GetUrlParameter('sidx', 1);
+  var sord = GetUrlParameter('sord', '');
+  
+  DBEdit.GridParams = {'tableName': tableName, 'page': page, 'limit': limit, 'sidx': sidx, 'sord': sord, 'totalPages': 0};
   DBEdit.GridTableName = tableName;
   var http = new XMLHttpRequest();
   http.open('POST', 'dbedit.php?act=grid&tableName={0}&page={1}&limit={2}&sidx={3}&sord={4}'.format(tableName, page, limit, sidx, sord), true);
@@ -21,6 +34,7 @@ DBEdit.CreateGrid = function (tableName, page = 1, limit = 200, sidx = 1, sord =
   http.send(JSON.stringify({tableName: tableName}));
   http.onload = function() {
     DBEdit.GridData = JSON.parse(http.responseText);
+    DBEdit.GridParams.totalPages = DBEdit.GridData.TotalPages;
     var grid = '<table class="grid"><thead><tr>';
 
     //header
@@ -53,8 +67,18 @@ DBEdit.CreateGrid = function (tableName, page = 1, limit = 200, sidx = 1, sord =
     }
 
     document.getElementById('grid').innerHTML = grid;
+    DBEdit.CreateGridPager();
     DBEdit.CreateEdit();
   }
+}
+
+//Create Grid Pager
+DBEdit.CreateGridPager = function () {
+  var p = DBEdit.GridParams;
+  var tmp = '<a href="?act=grid&tableName={0}&limit={1}&sidx={2}&sord={3}&page={4}">{5}</a>'.format(p.tableName, p.limit, p.sidx, p.sord, '{0}', '{1}');
+  var pager = tmp.format(1, '|<') + tmp.format(p.page > 1 ? p.page - 1 : 1, '<<') 
+    + tmp.format(p.page < p.totalPages ? p.page + 1 : p.totalPages, '>>') + tmp.format(p.totalPages, '>|');
+  document.getElementById("grid_pager").innerHTML = pager;
 }
 
 //Generate Edit form
@@ -67,6 +91,7 @@ DBEdit.CreateEdit = function () {
   editDiv.innerHTML = '';
   editDiv.appendChild(editForm);
   editForm.name = 'editForm';
+  editForm.onSubmit = 'DBEdit.SaveRecord(); return false;';
   editForm.appendChild(editTable);
 
   for (var i = 0; i < header.length; i++) {
@@ -78,9 +103,9 @@ DBEdit.CreateEdit = function () {
   var buttons = document.createElement('div');
   editDiv.appendChild(buttons);
   buttons.setAttribute('class', 'flexF');
-  buttons.innerHTML = '<a href="#" onClick="DBEdit.SaveRecord(); return false;">Save</a>'
-                    + '<a href="#" onClick="DBEdit.CancelEdit(); return false;">Cancel</a>'
-                    + '<a href="#" onClick="DBEdit.DeleteRecord(); return false;">Delete</a>';
+  buttons.innerHTML = '<button onClick="DBEdit.SaveRecord(); return false;">Save</button>'
+                    + '<button onClick="DBEdit.CancelEdit(); return false;">Cancel</button>'
+                    + '<button onClick="DBEdit.DeleteRecord(); return false;">Delete</button>';
 }
 
 //Generate corect input for editing
@@ -120,8 +145,10 @@ DBEdit.GetInput = function (colIdx) {
   }
 
   elem.required = col.Required == true;
-  elem.readonly = col.ReadOnly == true;
+  elem.readOnly = col.ReadOnly == true;
   elem.id = '__' + col.Name;
+
+  if (col.EditAs == 'checkbox') elem.required = false;
 
   return elem;
 };
@@ -144,11 +171,12 @@ DBEdit.EditRecord = function (idx) {
     }
 
     switch (oField.type) {
-      case 'checkbox':
+      case 'checkbox': {
         oField.checked = val == 1;
         break;
-      case 'select-one':
-        if (isNew && val == undefined) {
+      }
+      case 'select-one': {
+        if (val == undefined) {
           oField.selectedIndex = 0;
           break;
         }
@@ -159,6 +187,12 @@ DBEdit.EditRecord = function (idx) {
           }
         }
         break;
+      }
+      case 'text':
+      case 'textarea': {
+        oField.value = val == undefined ? '' : val;
+        break;
+      }
       default:
         oField.value = val;
         break;

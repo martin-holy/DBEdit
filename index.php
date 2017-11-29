@@ -25,11 +25,12 @@
       <div id="edit" style="display: none;"></div>
     </main>
     <footer>
-      <a href="#" onClick="DBEdit.NewRecord(); return false;">+</a>
+      <button onClick="DBEdit.NewRecord(); return false;">+</button>
+      <div id="grid_pager"></div>
     </footer>
 
     <script>
-      DBEdit.CreateGrid('<?php echo GET('tableName', 'SYS_ColumnsSettings'); ?>');
+      DBEdit.CreateGrid();
     </script>
 
     <?php $conn = null; ?>

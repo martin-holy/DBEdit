@@ -16,9 +16,11 @@ main {
 footer {
   background: #BFDBFF;
   height: 18px;
+  display: flex;
+  justify-content: space-around;
 }
 
-footer a {
+footer button, footer a {
   padding: 0px 10px;
 }
 
@@ -28,8 +30,21 @@ a {
 	text-decoration: none;
 	padding: 8px 25px;
 }
+
 a:hover {
 	background: #000000;
+}
+
+button {
+	background: #30A6E6;
+	color: #FFFFFF;
+  padding: 8px 25px;
+  border: none;
+}
+
+button:hover {
+  background: #000000;
+  cursor: pointer;
 }
 
 .grid {

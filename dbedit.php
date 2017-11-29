@@ -5,8 +5,7 @@
 
   switch (GET('act')) {
     case 'grid': {
-      $json = json_decode(file_get_contents("php://input"));
-      echo json_encode(GetGridData($json->tableName, GET('page'), GET('limit'), GET('sidx'), GET('sord')));
+      echo json_encode(GetGridData(GET('tableName'), GET('page'), GET('limit'), GET('sidx'), GET('sord')));
       break;
     }
     case 'saveRecord': {
@@ -138,6 +137,7 @@
     $total_pages = $count > 0 ? ceil($count / $limit) : 0;
     if ($page > $total_pages) $page = $total_pages;
     $start = $limit * $page - $limit;
+    $r->TotalPages = $total_pages;
     $r->Data = DbDoIt("select ".implode(',', $colNames)." from $tableName order by $sidx $sord limit $start , $limit");
     return $r;
   }
